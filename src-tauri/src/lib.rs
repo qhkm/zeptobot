@@ -1,5 +1,6 @@
 mod commands;
 mod services;
+pub mod tools;
 
 use commands::{execute_automation, get_status, send_message};
 use tauri::{

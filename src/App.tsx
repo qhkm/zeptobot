@@ -17,6 +17,12 @@ interface ChatMessage {
   content: string;
 }
 
+interface BotStatus {
+  listening: boolean;
+  agent_ready: boolean;
+  automation_available: boolean;
+}
+
 let nextId = 1;
 
 function TypingIndicator() {
@@ -36,7 +42,18 @@ function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
+  const [agentReady, setAgentReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Check agent status on mount
+  useEffect(() => {
+    invoke<BotStatus>("get_status")
+      .then((status) => {
+        setAgentReady(status.agent_ready);
+        setIsConnected(true);
+      })
+      .catch(() => setIsConnected(false));
+  }, []);
 
   // Auto-scroll whenever messages or loading state change
   useEffect(() => {
@@ -117,7 +134,11 @@ function App() {
         {messages.length === 0 && (
           <div className="empty-state">
             <p className="empty-title">How can I help you?</p>
-            <p className="empty-hint">Type a message below to get started.</p>
+            <p className="empty-hint">
+              {agentReady
+                ? "I can control your Mac — try \"move the mouse to the center of the screen\""
+                : "Set ANTHROPIC_API_KEY or OPENAI_API_KEY to enable the AI agent"}
+            </p>
           </div>
         )}
 

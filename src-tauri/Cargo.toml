@@ -19,3 +19,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 autopilot = "0.4"
+zeptoclaw = { path = "../../zeptoclaw" }
+async-trait = "0.1"
+tracing = "0.1"

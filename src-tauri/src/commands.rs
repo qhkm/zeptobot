@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::services::agent::AgentService;
 use crate::services::automation::AutomationService;
+use crate::tools::all_automation_tools;
 
 /// A single chat message exchanged between the user and assistant.
 ///
@@ -21,13 +22,15 @@ pub struct BotStatus {
     pub automation_available: bool,
 }
 
-/// Send a user message and receive an assistant response.
+/// Send a user message through the ZeptoClaw agent loop and return the
+/// assistant's response.
 ///
-/// Currently delegates to the placeholder `AgentService`. Once ZeptoClaw
-/// is integrated, this will run through the full agent loop with tools.
+/// Creates an `AgentService` with all automation tools, calls the LLM,
+/// executes any tool calls, and returns the final text.
 #[tauri::command]
 pub async fn send_message(message: String) -> Result<String, String> {
-    let agent = AgentService::new();
+    let tools = all_automation_tools();
+    let agent = AgentService::new(tools)?;
     agent.chat(&message).await
 }
 
@@ -36,7 +39,7 @@ pub async fn send_message(message: String) -> Result<String, String> {
 pub async fn get_status() -> Result<BotStatus, String> {
     Ok(BotStatus {
         listening: false,
-        agent_ready: true,
+        agent_ready: AgentService::has_api_key(),
         automation_available: true,
     })
 }
