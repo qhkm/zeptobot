@@ -1,19 +1,12 @@
 use serde::{Deserialize, Serialize};
+use tauri::State;
+use zeptoclaw::agent::ZeptoAgent;
 
-use crate::services::agent::AgentService;
+use crate::services::agent::has_api_key;
 use crate::services::automation::AutomationService;
-use crate::tools::all_automation_tools;
 
-/// A single chat message exchanged between the user and assistant.
-///
-/// Used by the frontend to render conversation history.
-/// Not referenced in Rust commands yet, but exposed for Tauri IPC serialization.
-#[allow(dead_code)]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
-}
+/// Shared agent state managed by Tauri.
+pub struct AgentState(pub ZeptoAgent);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BotStatus {
@@ -22,16 +15,19 @@ pub struct BotStatus {
     pub automation_available: bool,
 }
 
-/// Send a user message through the ZeptoClaw agent loop and return the
-/// assistant's response.
+/// Send a user message through the ZeptoAgent and return the response.
 ///
-/// Creates an `AgentService` with all automation tools, calls the LLM,
-/// executes any tool calls, and returns the final text.
+/// Conversation history is maintained across calls via the managed state.
 #[tauri::command]
-pub async fn send_message(message: String) -> Result<String, String> {
-    let tools = all_automation_tools();
-    let agent = AgentService::new(tools)?;
-    agent.chat(&message).await
+pub async fn send_message(message: String, agent: State<'_, AgentState>) -> Result<String, String> {
+    agent.0.chat(&message).await.map_err(|e| format!("{e}"))
+}
+
+/// Clear the conversation history.
+#[tauri::command]
+pub async fn clear_history(agent: State<'_, AgentState>) -> Result<(), String> {
+    agent.0.clear_history().await;
+    Ok(())
 }
 
 /// Return the current status of the bot subsystems.
@@ -39,22 +35,18 @@ pub async fn send_message(message: String) -> Result<String, String> {
 pub async fn get_status() -> Result<BotStatus, String> {
     Ok(BotStatus {
         listening: false,
-        agent_ready: AgentService::has_api_key(),
+        agent_ready: has_api_key(),
         automation_available: true,
     })
 }
 
 /// Execute a desktop automation action (mouse, keyboard, screen queries).
-///
-/// Delegates to `AutomationService` which wraps autopilot-rs.
 #[tauri::command]
 pub async fn execute_automation(
     action: String,
     params: serde_json::Value,
 ) -> Result<String, String> {
     let automation = AutomationService::new();
-    // autopilot calls are synchronous -- run on the blocking pool
-    // to avoid holding the async executor.
     tokio::task::spawn_blocking(move || automation.execute(&action, &params))
         .await
         .map_err(|e| format!("Automation task panicked: {e}"))?
