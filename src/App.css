@@ -193,6 +193,36 @@ body,
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* ── Step bubbles (tool execution steps) ───────────────────── */
+.step-row {
+  justify-content: flex-start;
+}
+
+.step-bubble {
+  background: rgba(15, 52, 96, 0.4);
+  color: var(--text-muted);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px 12px 12px 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+  max-width: 90%;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+.step-tool {
+  display: inline-block;
+  background: rgba(233, 69, 96, 0.2);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 6px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 /* ── Typing indicator ───────────────────────────────────────── */
 .typing-indicator {
   display: flex;
@@ -311,6 +341,42 @@ body,
   color: var(--text-muted);
   opacity: 0.6;
   user-select: none;
+}
+
+/* ── Stop button ───────────────────────────────────────────── */
+.stop-row {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.stop-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.stop-btn:hover {
+  background: var(--surface-high);
+  border-color: var(--accent);
+}
+
+.stop-btn:active {
+  transform: scale(0.96);
+}
+
+.stop-btn svg {
+  display: block;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────── */

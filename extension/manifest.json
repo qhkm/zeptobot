@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "ZeptoBot Bridge",
+  "version": "1.0.0",
+  "description": "Connects ZeptoBot desktop agent to Chrome for browser automation",
+  "permissions": ["tabs", "scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

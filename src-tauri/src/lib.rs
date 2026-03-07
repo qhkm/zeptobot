@@ -2,13 +2,19 @@ mod commands;
 mod services;
 pub mod tools;
 
-use commands::{clear_history, execute_automation, get_status, send_message, AgentState};
+use std::sync::Arc;
+
+use commands::{
+    clear_history, execute_automation, get_status, send_message, stop_generation, AgentState,
+    CancelState,
+};
 use services::agent::build_agent;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager,
 };
+use tokio::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,16 +24,16 @@ pub fn run() {
             // ── Build ZeptoAgent (persists across all commands) ────
             match build_agent() {
                 Ok(agent) => {
-                    app.manage(AgentState(agent));
+                    app.manage(AgentState(Some(agent)));
                 }
                 Err(e) => {
                     eprintln!("Warning: Agent not available: {e}");
-                    // Build a dummy agent so the app still starts —
-                    // commands will fail gracefully when called.
-                    // For now, we require an API key.
-                    return Err(e.into());
+                    app.manage(AgentState(None));
                 }
             }
+
+            // ── Cancellation state ─────────────────────────────────
+            app.manage(CancelState(Arc::new(Mutex::new(None))));
 
             // ── System tray ──────────────────────────────────────
             let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -59,6 +65,7 @@ pub fn run() {
             clear_history,
             get_status,
             execute_automation,
+            stop_generation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

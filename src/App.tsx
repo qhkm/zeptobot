@@ -1,26 +1,28 @@
 /**
  * ZeptoBot — chat interface
- *
- * Usage:
- *   The Rust side must expose a `send_message` command:
- *     #[tauri::command]
- *     async fn send_message(message: String) -> Result<String, String> { ... }
  */
 
 import { useState, useRef, useEffect, KeyboardEvent, FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 
 interface ChatMessage {
   id: number;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "step";
   content: string;
+  tool?: string;
 }
 
 interface BotStatus {
   listening: boolean;
   agent_ready: boolean;
   automation_available: boolean;
+}
+
+interface AgentStep {
+  tool: string;
+  message: string;
 }
 
 let nextId = 1;
@@ -55,6 +57,47 @@ function App() {
       .catch(() => setIsConnected(false));
   }, []);
 
+  // Listen for agent step events
+  useEffect(() => {
+    const unlisten = listen<AgentStep>("agent-step", (event) => {
+      const step = event.payload;
+      setMessages((prev) => {
+        // Check if the last message is a step for the same tool starting with "Executing:"
+        // If so, replace it with the "Done:" result
+        const last = prev[prev.length - 1];
+        if (
+          last &&
+          last.role === "step" &&
+          last.tool === step.tool &&
+          step.message.startsWith("Done:")
+        ) {
+          return [
+            ...prev.slice(0, -1),
+            {
+              id: last.id,
+              role: "step" as const,
+              content: step.message,
+              tool: step.tool,
+            },
+          ];
+        }
+        return [
+          ...prev,
+          {
+            id: nextId++,
+            role: "step" as const,
+            content: step.message,
+            tool: step.tool,
+          },
+        ];
+      });
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   // Auto-scroll whenever messages or loading state change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,18 +127,39 @@ function App() {
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      const errMsg: ChatMessage = {
-        id: nextId++,
-        role: "assistant",
-        content:
-          err instanceof Error
+      const content =
+        typeof err === "string"
+          ? err
+          : err instanceof Error
             ? err.message
-            : "Something went wrong. Please try again.",
-      };
-      setMessages((prev) => [...prev, errMsg]);
-      setIsConnected(false);
+            : JSON.stringify(err);
+      // Don't show "stopped" as an error
+      if (content === "Generation stopped by user") {
+        const stopMsg: ChatMessage = {
+          id: nextId++,
+          role: "assistant",
+          content: "Stopped.",
+        };
+        setMessages((prev) => [...prev, stopMsg]);
+      } else {
+        const errMsg: ChatMessage = {
+          id: nextId++,
+          role: "assistant",
+          content,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setIsConnected(false);
+      }
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function stopGeneration() {
+    try {
+      await invoke("stop_generation");
+    } catch {
+      // ignore
     }
   }
 
@@ -136,7 +200,7 @@ function App() {
             <p className="empty-title">How can I help you?</p>
             <p className="empty-hint">
               {agentReady
-                ? "I can control your Mac — try \"move the mouse to the center of the screen\""
+                ? 'I can control your Mac — try "open Google Chrome"'
                 : "Set ANTHROPIC_API_KEY or OPENAI_API_KEY to enable the AI agent"}
             </p>
           </div>
@@ -145,11 +209,26 @@ function App() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`message-row ${msg.role === "user" ? "user-row" : "bot-row"}`}
+            className={`message-row ${
+              msg.role === "user"
+                ? "user-row"
+                : msg.role === "step"
+                  ? "step-row"
+                  : "bot-row"
+            }`}
           >
             <div
-              className={`bubble ${msg.role === "user" ? "user-bubble" : "bot-bubble"}`}
+              className={`bubble ${
+                msg.role === "user"
+                  ? "user-bubble"
+                  : msg.role === "step"
+                    ? "step-bubble"
+                    : "bot-bubble"
+              }`}
             >
+              {msg.role === "step" && (
+                <span className="step-tool">{msg.tool}</span>
+              )}
               {msg.content}
             </div>
           </div>
@@ -162,39 +241,56 @@ function App() {
 
       {/* ── Input bar ────────────────────────────────────── */}
       <footer className="input-bar">
-        <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="chat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message ZeptoBot…"
-            rows={1}
-            disabled={isLoading}
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="send-btn"
-            disabled={!input.trim() || isLoading}
-            aria-label="Send message"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {isLoading ? (
+          <div className="stop-row">
+            <button className="stop-btn" onClick={stopGeneration}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+              </svg>
+              Stop
+            </button>
+          </div>
+        ) : (
+          <form className="input-form" onSubmit={handleSubmit}>
+            <textarea
+              className="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message ZeptoBot..."
+              rows={1}
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="send-btn"
+              disabled={!input.trim()}
+              aria-label="Send message"
             >
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
-        </form>
-        <p className="input-hint">Enter to send · Shift+Enter for new line</p>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </form>
+        )}
+        <p className="input-hint">
+          {isLoading ? "Processing..." : "Enter to send \u00b7 Shift+Enter for new line"}
+        </p>
       </footer>
     </div>
   );
