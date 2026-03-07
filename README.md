@@ -18,10 +18,12 @@ Voice-controlled AI desktop assistant. Uses LLM reasoning to drive real desktop 
 ## What It Can Do (So Far)
 
 - Chat with an AI agent that has access to desktop tools
-- Inspect and interact with any macOS app's UI via Accessibility API
-- Automate Chrome — navigate, click, type, read pages, execute JS
-- Take screenshots and understand what's on screen via vision AI
-- Mouse/keyboard control (move, click, type, scroll)
+- Open, activate, and control macOS apps (open_app, activate_app, AppleScript)
+- Inspect and interact with any app's UI via Accessibility API (find, click, set value, read)
+- Automate Chrome — navigate, click, type, read pages, list elements, execute JS, wait for content
+- Take screenshots and understand what's on screen via GPT-4o vision
+- Mouse/keyboard control (move, click, type, key combos)
+- Open URLs in any browser
 
 ## Roadmap
 
@@ -61,7 +63,7 @@ Voice-controlled AI desktop assistant. Uses LLM reasoning to drive real desktop 
 - [ ] Safety guardrails — confirmation before destructive actions
 
 ### Polish
-- [ ] System tray with status indicator
+- [ ] System tray status indicator (tray exists, needs dynamic state)
 - [ ] Onboarding flow (permissions, API key setup)
 - [ ] Auto-update via Sparkle
 - [ ] DMG packaging and notarization
