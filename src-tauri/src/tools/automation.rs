@@ -714,7 +714,7 @@ pub fn all_automation_tools() -> Vec<Box<dyn Tool>> {
         Box::new(ActivateAppTool),
         Box::new(OpenUrlTool),
         Box::new(RunAppleScriptTool),
-        // Vision (Tier 3 — screenshot + GPT-4o)
+        // Vision (Tier 3 — screenshot + GPT-4o-mini)
         Box::new(super::screenshot::ScreenshotTool),
         // Accessibility API (Tier 2 — programmatic UI interaction)
         Box::new(super::ax_tools::GetUIElementsTool),

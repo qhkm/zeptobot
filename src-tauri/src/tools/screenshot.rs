@@ -1,4 +1,4 @@
-//! Screenshot tool with GPT-4o vision analysis.
+//! Screenshot tool with GPT-4o-mini vision analysis.
 //!
 //! Captures the screen using autopilot, sends to OpenAI vision API,
 //! and returns a text description of what's on screen.
@@ -107,7 +107,7 @@ impl Tool for ScreenshotTool {
         );
 
         let body = json!({
-            "model": "gpt-4o",
+            "model": "gpt-4o-mini",
             "max_tokens": 1000,
             "messages": [{
                 "role": "user",

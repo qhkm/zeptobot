@@ -112,19 +112,28 @@ After completing a task, reply with a SHORT confirmation:\n\
 - \"Created a new note with your text.\"\n\
 Do NOT explain HOW you did it unless the user asks.";
 
+/// Default models — cheap but capable enough for tool-calling automation.
+const DEFAULT_CLAUDE_MODEL: &str = "claude-haiku-4-5-20251001";
+const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
+
 /// Build a `ZeptoAgent` from environment variables.
 ///
 /// Checks `ANTHROPIC_API_KEY` first, then `OPENAI_API_KEY`.
+/// Model can be overridden via `ZEPTOBOT_MODEL` env var.
 pub fn build_agent() -> Result<ZeptoAgent, String> {
     let mut builder = ZeptoAgent::builder()
         .tools(all_automation_tools())
         .system_prompt(SYSTEM_PROMPT)
         .max_iterations(20);
 
+    let model_override = std::env::var("ZEPTOBOT_MODEL").ok();
+
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
         builder = builder.provider(ClaudeProvider::new(&key));
+        builder = builder.model(model_override.unwrap_or(DEFAULT_CLAUDE_MODEL.into()));
     } else if let Ok(key) = std::env::var("OPENAI_API_KEY") {
         builder = builder.provider(OpenAIProvider::new(&key));
+        builder = builder.model(model_override.unwrap_or(DEFAULT_OPENAI_MODEL.into()));
     } else {
         return Err("No API key found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY".into());
     }
